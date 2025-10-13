@@ -1,23 +1,21 @@
 monosc is a simple bash program made to simplify glslangValidator and SPIRV-Shadercross with a cmake-like command and file relationship. It supports GLSL, HLSL, and SPIRV as input, SPIRV, MSL, DXBC, and DXIL as output, and can compile vertex, fragment, and compute shaders.
 
+Notes:
+* .hlsl files must be suffixed with .frag, .vert, .comp, etc. (.frag.hlsl ...)
+* Checks for files (when "files" is unspecified) in the specified directory are not recursive.
+
+Current caveats:
+* .spv files must also be suffixed with .frag, .vert, .comp, etc. (.frag.spv ...)
+* DXBC and DXIL cannot be compiled from macos until I get mach-dxcompiler compiled on my machine.
+
+
 Below is the syntax for the `monosc` command:
 ````
-monosc <directory> [options]
+monosc <directory>
 
 parameters:
   <directory>         : The directory that houses your
                         shader_compile.json
-
-options:
-  --guess-hlsl-files  : Since HLSL does not have a strict naming
-                        scheme, this option will guess what each
-                        .hlsl file does. If you exclude this
-                        option, you must prefix your file
-                        extension with the shader type.
-
-                        (.vert.hlsl, .frag.hlsl, or .comp.hlsl)
-
-                        This option only works with "lazy": true
 ````
 
 Below is the structure for your `shader_compile.json`:
@@ -54,3 +52,16 @@ Below is the structure for your `shader_compile.json`:
     ├── files (empty) ["string/filename"]
     └── write_folder "string/directory"
 ````
+
+
+Here's what the shader files are processed through for each type:
+
+**Direct**
+GLSL, HLSL -> SPIRV: glslangValidator
+SPIRV -> GLSL, HLSL, MSL: spirv-shadercross
+HLSL -> DXBC, DXIL: dxc
+
+**Multistage**
+GLSL -> DXBC, DXIL: glslangValidator -> spirv-shadercross (HLSL) -> dxc
+GLSL -> HLSL: glslangValidator -> spirv-shadercross
+HLSL -> GLSL: glslangValidator -> spirv-shadercross

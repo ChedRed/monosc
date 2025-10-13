@@ -5,7 +5,6 @@
   "shaders": {
     "frag": {
       "read_folder": "./read/frag",
-      "files": [],
       "write_folder": "./write/frag"
     },
     "vert": {
