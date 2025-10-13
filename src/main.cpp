@@ -17,9 +17,12 @@ int main(int argc, char * argv[]) {
             std::cout << helpMessage;
             break;
         case 2:
+            // Set CWD
+            if (!std::filesystem::is_directory(argv[1])) exitmsg(1, "Error: the directory you provided is invalid!");
+            std::filesystem::current_path(argv[1]);
+
             // Verify json file existence
-            std::string shader_compile_path = std::string(argv[1]) + "/" + std::string("shader_compile.json");
-            if (!std::filesystem::is_regular_file(shader_compile_path)) exitmsg(1, "Error: shader_compile.json could not be found at the path specified");
+            if (!std::filesystem::is_regular_file("shader_compile.json")) exitmsg(1, "Error: shader_compile.json could not be found at the path specified");
 
             // initialize shader_compile.json schema
             nlohmann::json schema = nlohmann::json::parse(shader_compile_schema);
@@ -30,7 +33,7 @@ int main(int argc, char * argv[]) {
 
             // Check if shader_compile.json is valid json
             try {
-                compile = nlohmann::json::parse(std::ifstream(shader_compile_path));
+                compile = nlohmann::json::parse(std::ifstream("shader_compile.json"));
             } catch (const std::exception &e) {
                 exitmsg(1, std::string("Error: shader_compile.json is invalid.\n") + e.what());
             }
@@ -47,13 +50,29 @@ int main(int argc, char * argv[]) {
 
             // Check if file paths are valid
             if (compile["lazy"]) {
-                if (!std::filesystem::is_directory(std::string(argv[1]) + "/" + std::string(compile["shaders"]["read_folder"]))) exitmsg(1, "Error: the directory specified in read_folder is invalid!");
-                if (!std::filesystem::is_directory(std::string(argv[1]) + "/" + std::string(compile["shaders"]["write_folder"]))) exitmsg(1, "Error: the directory specified in write_folder is invalid!");
+                if (!std::filesystem::is_directory(compile["shaders"]["read_folder"])) exitmsg(1, "Error: the directory specified in read_folder is invalid!");
+                if (!std::filesystem::is_directory(compile["shaders"]["write_folder"])) exitmsg(1, "Error: the directory specified in write_folder is invalid!");
                 for (int i = 0; i < compile["shaders"]["files"].size(); i++){
-                    if (!std::filesystem::exists(std::string(argv[1]) + "/" + std::string(compile["shaders"]["read_folder"]) + "/" + std::string(compile["shaders"]["files"][i]))) exitmsg(1, std::string("Error: the file ") + std::string(compile["shaders"]["files"][i]) + " cannot be found!");
+                    if (!std::filesystem::exists(std::string(compile["shaders"]["read_folder"]) + "/" + std::string(compile["shaders"]["files"][i]))) exitmsg(1, std::string("Error: the file ") + std::string(compile["shaders"]["files"][i]) + " cannot be found!");
                 }
             } else { // Check for standard
-
+                // Check frag
+                if (!std::filesystem::is_directory(std::string(compile["shaders"]["frag"]["read_folder"]))) exitmsg(1, "Error: the directory specified for frag in read_folder is invalid!");
+                if (!std::filesystem::is_directory(std::string(compile["shaders"]["frag"]["write_folder"]))) exitmsg(1, "Error: the directory specified for frag in write_folder is invalid!");
+                for (int i = 0; i < compile["shaders"]["frag"]["files"].size(); i++){
+                    if (!std::filesystem::exists(std::string(compile["shaders"]["frag"]["read_folder"]) + "/" + std::string(compile["shaders"]["frag"]["files"][i]))) exitmsg(1, std::string("Error: for frag, the file ") + std::string(compile["shaders"]["frag"]["files"][i]) + " cannot be found!");
+                }
+                // Check vert
+                if (!std::filesystem::is_directory(std::string(compile["shaders"]["vert"]["read_folder"]))) exitmsg(1, "Error: the directory specified for vert in read_folder is invalid!");
+                if (!std::filesystem::is_directory(std::string(compile["shaders"]["vert"]["write_folder"]))) exitmsg(1, "Error: the directory specified for vert in write_folder is invalid!");
+                for (int i = 0; i < compile["shaders"]["vert"]["files"].size(); i++){
+                    if (!std::filesystem::exists(std::string(compile["shaders"]["vert"]["read_folder"]) + "/" + std::string(compile["shaders"]["vert"]["files"][i]))) exitmsg(1, std::string("Error: for vert, the file ") + std::string(compile["shaders"]["vert"]["files"][i]) + " cannot be found!");
+                }
+                if (!std::filesystem::is_directory(std::string(compile["shaders"]["comp"]["read_folder"]))) exitmsg(1, "Error: the directory specified for comp in read_folder is invalid!");
+                if (!std::filesystem::is_directory(std::string(compile["shaders"]["comp"]["write_folder"]))) exitmsg(1, "Error: the directory specified for comp in write_folder is invalid!");
+                for (int i = 0; i < compile["shaders"]["comp"]["files"].size(); i++){
+                    if (!std::filesystem::exists(std::string(compile["shaders"]["comp"]["read_folder"]) + "/" + std::string(compile["shaders"]["comp"]["files"][i]))) exitmsg(1, std::string("Error: for comp, the file ") + std::string(compile["shaders"]["comp"]["files"][i]) + " cannot be found!");
+                }
             }
 
             //      TODO:

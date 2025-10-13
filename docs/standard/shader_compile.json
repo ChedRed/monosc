@@ -14,9 +14,9 @@
       "write_folder": "./write/vert"
     },
     "comp": {
-      "read_folder": "/absolute/paths/work/too/comp",
+      "read_folder": "./read/comp",
       "files": ["this.comp", "that.comp"],
-      "write_folder": "/abolute/path/example/comp"
+      "write_folder": "./write/comp"
     }
   }
 }
