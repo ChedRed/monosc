@@ -1,0 +1,4 @@
+CompileFlags:
+    Add:
+        - -ferror-limit=1000
+        - -std=c++2b

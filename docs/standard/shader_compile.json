@@ -6,17 +6,17 @@
     "frag": {
       "read_folder": "./read/frag",
       "files": [],
-      "write_folder": "./write/frag",
+      "write_folder": "./write/frag"
     },
     "vert": {
       "read_folder": "./read/vert",
       "files": ["example.vert"],
-      "write_folder": "./write/vert",
+      "write_folder": "./write/vert"
     },
     "comp": {
       "read_folder": "/absolute/paths/work/too/comp",
       "files": ["this.comp", "that.comp"],
-      "write_folder": "/abolute/path/example/comp",
-    },
-  },
+      "write_folder": "/abolute/path/example/comp"
+    }
+  }
 }
