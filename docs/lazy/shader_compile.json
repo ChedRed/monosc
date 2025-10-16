@@ -4,7 +4,7 @@
   "write_format": "spirv",
   "shaders": {
     "read_folder": "./shaders/read",
-    "files": ["example.vert", "shader.frag", "this.comp"],
+    "files": ["shader.frag", "example.vert", "this.comp"],
     "write_folder": "./shaders/write"
   }
 }
