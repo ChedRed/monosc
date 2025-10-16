@@ -20,4 +20,6 @@ add_subdirectory(external/SPIRV-Cross)
 target_link_libraries(monosc PRIVATE glslang::glslang glslang::SPIRV spirv-cross-core spirv-cross-glsl) # Link glslang and SPIRV-Cross
 target_link_libraries(monosc PRIVATE nlohmann_json::nlohmann_json nlohmann_json_schema_validator::validator) # Link nlohmann-json and schema validator
 
+target_sources(monosc PRIVATE external/glslang/glslang/ResourceLimits/ResourceLimits.cpp)
+
 target_include_directories(monosc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external/glslang ${CMAKE_CURRENT_SOURCE_DIR}/external/spirv-cross)
