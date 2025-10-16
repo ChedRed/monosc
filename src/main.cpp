@@ -23,30 +23,12 @@ typedef struct {
     std::vector<std::string> filenames;
     std::vector<std::vector<unsigned int> > shadercode;
     EShLanguage stage;
-    bool existent = true;
+    bool existent = false;
 } shadertype_info;
 
-std::string shaderstages[] = {"frag"}; // , "vert", "comp"
+const std::string shader_stages[] = {"frag", "vert", "comp"}; // , "vert", "comp"
 
 std::map<std::string, shadertype_info> shader_info;
-
-// std::string frag_read_directory;
-// std::string vert_read_directory;
-// std::string comp_read_directory;
-// std::string frag_write_directory;
-// std::string vert_write_directory;
-// std::string comp_write_directory;
-
-// std::vector<std::string> frag_filepaths;
-// std::vector<std::string> vert_filepaths;
-// std::vector<std::string> comp_filepaths;
-// std::vector<std::string> frag_filenames;
-// std::vector<std::string> vert_filenames;
-// std::vector<std::string> comp_filenames;
-
-// std::vector<std::vector<unsigned int> > spirv_frag_shadercode;
-// std::vector<std::vector<unsigned int> > spirv_vert_shadercode;
-// std::vector<std::vector<unsigned int> > spirv_comp_shadercode;
 
 extern const char * helpMessage;
 void exitmsg(int code, const char * message);
@@ -101,13 +83,11 @@ int main(int argc, char * argv[]) {
             // Check if file paths are valid
             if (compile["lazy"]) {
                 if (!std::filesystem::is_directory(compile["shaders"]["read_folder"])) exitmsg(1, "Error: the directory specified in read_folder is invalid!");
-                shader_info["frag"].read_dir = compile["shaders"]["read_folder"];
-                shader_info["vert"].read_dir = shader_info["frag"].read_dir;
-                shader_info["comp"].read_dir = shader_info["frag"].read_dir;
                 if (!std::filesystem::is_directory(compile["shaders"]["write_folder"])) exitmsg(1, "Error: the directory specified in write_folder is invalid!");
-                shader_info["frag"].write_dir = compile["shaders"]["write_folder"];
-                shader_info["vert"].write_dir = shader_info["frag"].write_dir;
-                shader_info["comp"].write_dir = shader_info["frag"].write_dir;
+                for (const auto& stage: shader_stages){
+                    shader_info[stage].read_dir = compile["shaders"]["read_folder"];
+                    shader_info[stage].write_dir = compile["shaders"]["write_folder"];
+                }
                 if (compile["shaders"].contains("files")) {
                     for (int i = 0; i < compile["shaders"]["files"].size(); i++){
                         std::string filepath = std::string(compile["shaders"]["read_folder"]) + "/" + std::string(compile["shaders"]["files"][i]);
@@ -124,48 +104,44 @@ int main(int argc, char * argv[]) {
                             shader_info[shader_stage(entry.path(), compile["read_format"])].filepaths.push_back(entry.path());
                             shader_info[shader_stage(entry.path(), compile["read_format"])].filenames.push_back(entry.path().filename());
                         } else {
-                            exitmsg(1, std::string("Error: the file ") + std::string(entry.path()) + " cannot be identified!"); // TODO: turn into warning/info
+                            std::cout << "INFO: The file " << entry.path() << " cannot be identified, and was skipped.\n";
                         }
                     }
                 }
 
 
             } else { // Check for standard (nonlazy)
-                // Check shaderstages
-                for (int i = 0; i < sizeof(shaderstages)/sizeof(shaderstages[0]); i++){
-                    if (compile["shaders"].contains(shaderstages[i])) { // TODO: fix errors/warnings saying 'frag'
-                        if (!std::filesystem::is_directory(std::string(compile["shaders"][shaderstages[i]]["read_folder"]))) exitmsg(1, "Error: the directory specified for frag in read_folder is invalid!");
-                        shader_info[shaderstages[i]].read_dir = compile["shaders"][shaderstages[i]]["read_folder"];
-                        if (!std::filesystem::is_directory(std::string(compile["shaders"][shaderstages[i]]["write_folder"]))) exitmsg(1, "Error: the directory specified for frag in write_folder is invalid!");
-                        shader_info[shaderstages[i]].write_dir = compile["shaders"][shaderstages[i]]["write_folder"];
-                        if (compile["shaders"][shaderstages[i]].contains("files")){
-                            if (compile["shaders"][shaderstages[i]]["files"].size() == 0) {
-                                std::cout << "Warning: 'files' is defined in 'frag', but it is empty!";
-                                shader_info[shaderstages[i]].existent = false;
+                for (const auto& stage: shader_stages){
+                    if (compile["shaders"].contains(stage)) {
+                        shader_info[stage].existent = true;
+                        if (!std::filesystem::is_directory(std::string(compile["shaders"][stage]["read_folder"]))) exitmsg(1, std::string("Error: the directory specified for ") + stage + " in read_folder is invalid!");
+                        shader_info[stage].read_dir = compile["shaders"][stage]["read_folder"];
+                        if (!std::filesystem::is_directory(std::string(compile["shaders"][stage]["write_folder"]))) exitmsg(1, std::string("Error: the directory specified for ") + stage + " in write_folder is invalid!");
+                        shader_info[stage].write_dir = compile["shaders"][stage]["write_folder"];
+                        if (compile["shaders"][stage].contains("files")){
+                            if (compile["shaders"][stage]["files"].size() == 0) {
+                                std::cout << "Warning: 'files' is defined in '" << stage << "', but it is empty!";
+                                shader_info[stage].existent = false;
                             }
-                            for (int i = 0; i < compile["shaders"][shaderstages[i]]["files"].size(); i++){
-                                if (std::filesystem::exists(std::string(compile["shaders"][shaderstages[i]]["read_folder"]) + "/" + std::string(compile["shaders"][shaderstages[i]]["files"][i]))){
-                                    shader_info[shaderstages[i]].filepaths.push_back(std::string(compile["shaders"][shaderstages[i]]["read_folder"]) + "/" + std::string(compile["shaders"][shaderstages[i]]["files"][i]));
-                                    shader_info[shaderstages[i]].filenames.push_back(std::string(compile["shaders"][shaderstages[i]]["files"][i]));
+                            for (int i = 0; i < compile["shaders"][stage]["files"].size(); i++){
+                                if (std::filesystem::exists(std::string(compile["shaders"][stage]["read_folder"]) + "/" + std::string(compile["shaders"][stage]["files"][i]))){
+                                    shader_info[stage].filepaths.push_back(std::string(compile["shaders"][stage]["read_folder"]) + "/" + std::string(compile["shaders"][stage]["files"][i]));
+                                    shader_info[stage].filenames.push_back(std::string(compile["shaders"][stage]["files"][i]));
                                 }
-                                else exitmsg(1, std::string("Error: for frag, the file ") + std::string(compile["shaders"][shaderstages[i]]["files"][i]) + " cannot be found!");
+                                else exitmsg(1, std::string("Error: for") +  stage + ", the file " + std::string(compile["shaders"][stage]["files"][i]) + " cannot be found!");
                             }
                         } else {
-                            for (const auto& entry: std::filesystem::directory_iterator(compile["shaders"][shaderstages[i]]["read_folder"])) {
-                                if (shader_stage(entry.path(), std::string(compile["read_format"])) == shaderstages[i]){
-                                    shader_info[shaderstages[i]].filepaths.push_back(entry.path());
-                                    shader_info[shaderstages[i]].filenames.push_back(entry.path().filename());
+                            for (const auto& entry: std::filesystem::directory_iterator(compile["shaders"][stage]["read_folder"])) {
+                                if (shader_stage(entry.path(), std::string(compile["read_format"])) == stage){
+                                    shader_info[stage].filepaths.push_back(entry.path());
+                                    shader_info[stage].filenames.push_back(entry.path().filename());
                                 }
                             }
+                            if (shader_info[stage].filepaths.empty()) shader_info[stage].existent = false;
                         }
-                    } else {
-                        // No shaders needing compilation!
-                        shader_info[shaderstages[i]].existent = false;
                     }
                 }
             }
-            // TODO: Check access for folders and files
-            // TODO: Check if shader files are empty
 
 
             // Compile stuff
@@ -173,57 +149,59 @@ int main(int argc, char * argv[]) {
                 glslang::InitializeProcess();
                 glslang::EShSource read_source;
                 if (compile["read_format"] == "glsl") read_source = glslang::EShSourceGlsl;
-                // glslangValidator -> SPIRV
-                //
-                // Compile to SPIRV here
 
-                // Compile fragment shaders
-                for (int i = 0; i < sizeof(shaderstages)/sizeof(shaderstages[0]); i++){
-                    for (int i = 0; i < shader_info[shaderstages[i]].filepaths.size(); i++){
-                        std::ifstream prefile(shader_info[shaderstages[i]].filepaths[i]);
+                // Compile shaders to SPIRV
+                for (const auto& stage: shader_stages){
+                    if (!shader_info[stage].existent) continue;
+                    for (int i = 0; i < shader_info[stage].filepaths.size(); i++){
+                        std::ifstream prefile(shader_info[stage].filepaths[i]);
+                        if (!prefile){
+                            std::cout << "WARN: The file below was skipped. Are you sure you have permission for this file?\n" << shader_info[stage].filepaths[i];
+                            continue;
+                        }
                         std::string file_string((std::istreambuf_iterator<char>(prefile)), std::istreambuf_iterator<char>());
                         const char * file_code = file_string.c_str();
 
-                        glslang::TShader shader(shader_info[shaderstages[i]].stage);
+                        glslang::TShader shader(shader_info[stage].stage);
                         shader.setStrings(&file_code, 1);
-                        shader.setEnvInput(read_source, shader_info[shaderstages[i]].stage, glslang::EShClientVulkan, 450);
+                        shader.setEnvInput(read_source, shader_info[stage].stage, glslang::EShClientVulkan, 450);
                         shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
                         shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
 
                         TBuiltInResource resources = *GetDefaultResources();
                         if (!shader.parse(&resources, 450, false, EShMsgDefault)) {
-                            exitmsg(1, std::string("Error: shader file ") + shader_info[shaderstages[i]].filepaths[i] + " is invalid!\n" + shader.getInfoLog());
+                            exitmsg(1, std::string("Error: shader file ") + shader_info[stage].filepaths[i] + " is invalid!\n" + shader.getInfoLog());
                         }
                         glslang::TProgram program;
                         program.addShader(&shader);
 
                         if (!program.link(EShMsgDefault)) {
-                            exitmsg(1, std::string("Error: shader file ") + shader_info[shaderstages[i]].filepaths[i] + " is invalid!\n" + program.getInfoLog());
+                            exitmsg(1, std::string("Error: shader file ") + shader_info[stage].filepaths[i] + " is invalid!\n" + program.getInfoLog());
                         }
 
-                        glslang::TIntermediate * intermediate = program.getIntermediate(shader_info[shaderstages[i]].stage);
+                        glslang::TIntermediate * intermediate = program.getIntermediate(shader_info[stage].stage);
                         if (!intermediate) {
-                            exitmsg(1, std::string("Error: intermediate failed!\n") + shader_info[shaderstages[i]].filepaths[i] + "\n" + shader.getInfoLog());
+                            exitmsg(1, std::string("Error: intermediate failed!\n") + shader_info[stage].filepaths[i] + "\n" + shader.getInfoLog());
                         }
 
                         std::vector<unsigned int> spirv;
                         glslang::GlslangToSpv(*intermediate, spirv);
-                        shader_info[shaderstages[i]].shadercode.push_back(spirv);
+                        shader_info[stage].shadercode.push_back(spirv);
                     }
                 }
 
 
                 if (compile["write_format"] == "spirv"){
-                    for (int i = 0; i < sizeof(shaderstages)/sizeof(shaderstages[0]); i++){
-                        for (int i = 0; i < shader_info[shaderstages[i]].shadercode.size(); i++){
-                            std::ofstream out_file(shader_info[shaderstages[i]].write_dir + "/" + shader_info[shaderstages[i]].filenames[i] + ".spv");
+                    for (const auto& stage: shader_stages){
+                        for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                            std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
                             if (out_file) {
-                                size_t size = shader_info[shaderstages[i]].shadercode.size();
-                                out_file.write(reinterpret_cast<const char*>(shader_info[shaderstages[i]].shadercode.data()), size * sizeof(int));
+                                size_t size = shader_info[stage].shadercode.size();
+                                out_file.write(reinterpret_cast<const char*>(shader_info[stage].shadercode.data()), size * sizeof(int));
                                 out_file.close();
                             }
                             else {
-                                exitmsg(1, std::string("Error: file ") + shader_info[shaderstages[i]].filepaths[i] + " is invalid!\n"); // TODO: Handle error properly
+                                std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir;
                             }
                         }
                     }
@@ -244,22 +222,11 @@ int main(int argc, char * argv[]) {
 }
 
 const char * helpMessage =
-R"(monosc <directory> [options]
+R"(monosc <directory>
 
 parameters:
   <directory>         : The directory that houses your
                         shader_compile.json
-
-options:
-  --guess-hlsl-files  : Since HLSL does not have a strict naming
-                        scheme, this option will guess what each
-                        .hlsl file does. If you exclude this
-                        option, you must prefix your file
-                        extension with the shader type.
-
-                        (.vert.hlsl, .frag.hlsl, or .comp.hlsl)
-
-                        This option only works with "lazy": true
 )";
 
 void exitmsg(int code, const char * message){
