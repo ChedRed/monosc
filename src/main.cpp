@@ -142,6 +142,8 @@ int main(int argc, char * argv[]) {
                     }
                 }
             }
+            // TODO: Check access for folders and files
+            // TODO: Check if shader files are empty
 
 
             // Compile stuff
@@ -190,6 +192,40 @@ int main(int argc, char * argv[]) {
                     }
                 }
 
+                // Compile fragment shaders
+                for (int i = 0; i < sizeof(shader_stages)/sizeof(shader_stages[0]); i++){
+                    for (int i = 0; i < shader_info[shader_stages[i]].filepaths.size(); i++){
+                        std::ifstream prefile(shader_info[shader_stages[i]].filepaths[i]);
+                        std::string file_string((std::istreambuf_iterator<char>(prefile)), std::istreambuf_iterator<char>());
+                        const char * file_code = file_string.c_str();
+
+                        glslang::TShader shader(shader_info[shader_stages[i]].stage);
+                        shader.setStrings(&file_code, 1);
+                        shader.setEnvInput(read_source, shader_info[shader_stages[i]].stage, glslang::EShClientVulkan, 450);
+                        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
+                        shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+
+                        TBuiltInResource resources = *GetDefaultResources();
+                        if (!shader.parse(&resources, 450, false, EShMsgDefault)) {
+                            exitmsg(1, std::string("Error: shader file ") + shader_info[shader_stages[i]].filepaths[i] + " is invalid!\n" + shader.getInfoLog());
+                        }
+                        glslang::TProgram program;
+                        program.addShader(&shader);
+
+                        if (!program.link(EShMsgDefault)) {
+                            exitmsg(1, std::string("Error: shader file ") + shader_info[shader_stages[i]].filepaths[i] + " is invalid!\n" + program.getInfoLog());
+                        }
+
+                        glslang::TIntermediate * intermediate = program.getIntermediate(shader_info[shader_stages[i]].stage);
+                        if (!intermediate) {
+                            exitmsg(1, std::string("Error: intermediate failed!\n") + shader_info[shader_stages[i]].filepaths[i] + "\n" + shader.getInfoLog());
+                        }
+
+                        std::vector<unsigned int> spirv;
+                        glslang::GlslangToSpv(*intermediate, spirv);
+                        shader_info[shader_stages[i]].shadercode.push_back(spirv);
+                    }
+                }
 
                 if (compile["write_format"] == "spirv"){
                     for (const auto& stage: shader_stages){
