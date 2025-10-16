@@ -99,12 +99,15 @@ int main(int argc, char * argv[]) {
                         else exitmsg(1, std::string("Error: the file ") + std::string(compile["shaders"]["files"][i]) + " does not exist!");
                     }
                 } else {
-                    for (const auto& entry: std::filesystem::directory_iterator(compile["shaders"]["frag"]["read_folder"])) { // TODO: FIX
-                        if (shader_stage(entry.path(), compile["read_format"]) != ""){
-                            shader_info[shader_stage(entry.path(), compile["read_format"])].filepaths.push_back(entry.path());
-                            shader_info[shader_stage(entry.path(), compile["read_format"])].filenames.push_back(entry.path().filename());
-                        } else {
-                            std::cout << "INFO: The file " << entry.path() << " cannot be identified, and was skipped.\n";
+                    for (const auto & stage: shader_stages){
+                        if (!shader_info[stage].existent) continue;
+                        for (const auto& entry: std::filesystem::directory_iterator(compile["shaders"][stage]["read_folder"])) {
+                            if (shader_stage(entry.path(), compile["read_format"]) == stage){
+                                shader_info[stage].filepaths.push_back(entry.path());
+                                shader_info[stage].filenames.push_back(entry.path().filename());
+                            } else {
+                                std::cout << "INFO: The item " << entry.path() << " cannot be identified, and was skipped.\n";
+                            }
                         }
                     }
                 }
@@ -142,8 +145,6 @@ int main(int argc, char * argv[]) {
                     }
                 }
             }
-            // TODO: Check access for folders and files
-            // TODO: Check if shader files are empty
 
 
             // Compile stuff
