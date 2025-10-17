@@ -21,7 +21,7 @@ typedef struct {
     std::string write_dir;
     std::vector<std::string> filepaths;
     std::vector<std::string> filenames;
-    std::vector<std::vector<unsigned int> > shadercode;
+    std::vector<std::vector<uint32_t> > shadercode;
     EShLanguage stage;
     bool existent = false;
 } shadertype_info;
@@ -137,16 +137,14 @@ int main(int argc, char * argv[]) {
                                 else exitmsg(1, std::string("Error: for") +  stage + ", the file " + std::string(compile["shaders"][stage]["files"][i]) + " cannot be found!");
                             }
                         } else {
-                            for (const auto & stage: shader_stages){
-                                for (const auto& entry: std::filesystem::directory_iterator(compile["shaders"][stage]["read_folder"])) {
+                            for (const auto& entry: std::filesystem::directory_iterator(compile["shaders"][stage]["read_folder"])) {
+                                if (shader_stage(entry.path(), std::string(compile["read_format"])) == stage){
                                     std::cout << "Info: adding file " << entry.path() << std::endl;
-                                    if (shader_stage(entry.path(), std::string(compile["read_format"])) == stage){
-                                        shader_info[stage].filepaths.push_back(entry.path());
-                                        shader_info[stage].filenames.push_back(entry.path().filename());
-                                    }
+                                    shader_info[stage].filepaths.push_back(entry.path());
+                                    shader_info[stage].filenames.push_back(entry.path().filename());
                                 }
-                                if (shader_info[stage].filepaths.empty()) shader_info[stage].existent = false;
                             }
+                            if (shader_info[stage].filepaths.empty()) shader_info[stage].existent = false;
                         }
                     }
                 }
@@ -196,8 +194,9 @@ int main(int argc, char * argv[]) {
                             exitmsg(1, std::string("Error: intermediate failed!\n") + shader_info[stage].filepaths[i] + "\n" + shader.getInfoLog());
                         }
 
-                        std::vector<unsigned int> spirv;
+                        std::vector<uint32_t> spirv;
                         glslang::GlslangToSpv(*intermediate, spirv);
+                        std::cout << spirv.size() << std::endl;
                         shader_info[stage].shadercode.push_back(spirv);
                     }
                 }
@@ -206,13 +205,10 @@ int main(int argc, char * argv[]) {
                 if (compile["write_format"] == "spirv"){
                     for (const auto& stage: shader_stages){
                         for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
-                            std::cout << stage << std::endl;
-                            std::cout << shader_info[stage].filepaths[i] << std::endl;
-                            std::cout << shader_info[stage].filenames[i] << std::endl;
                             std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
                             if (out_file) {
                                 size_t size = shader_info[stage].shadercode.size();
-                                out_file.write(reinterpret_cast<const char*>(shader_info[stage].shadercode.data()), size * sizeof(int));
+                                out_file.write(reinterpret_cast<const char*>(shader_info[stage].shadercode[i].data()), size * sizeof(int));
                                 out_file.close();
                             }
                             else {
