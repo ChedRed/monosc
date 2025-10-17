@@ -9,7 +9,9 @@
 #include <SPIRV/GlslangToSpv.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/Public/ResourceLimits.h>
-#include <spirv_cross/spirv_cross.hpp>
+#include <spirv_cross/spirv_glsl.hpp>
+#include <spirv_cross/spirv_hlsl.hpp>
+#include <spirv_cross/spirv_msl.hpp>
 #include <utility>
 
 #include "schema.h"
@@ -201,7 +203,9 @@ int main(int argc, char * argv[]) {
                     }
                 }
 
+                glslang::FinalizeProcess();
 
+                // Save SPIRV
                 if (compile["write_format"] == "spirv"){
                     for (const auto& stage: shader_stages){
                         for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
@@ -217,13 +221,88 @@ int main(int argc, char * argv[]) {
                         }
                     }
                 } else {
-                    // current (SPIRV) -> spirv-shadercross
-                    //
-                    // Compile to requested format here
+                    // Compile existing SPIRV to other formats
+                    if (compile["write_format"] == "glsl"){ // TODO: simplify (nearly identical 3 things)
+                        for (const auto& stage: shader_stages){
+                            for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                                std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".glsl");
+                                if (out_file) {
+                                    spirv_cross::CompilerGLSL glsl(std::move(shader_info[stage].shadercode[i]));
+                                   	spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+
+                                   	for (auto &resource : resources.sampled_images){
+                                  		unsigned set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                                  		unsigned binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+                                  		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
+                                   	}
+
+                                   	spirv_cross::CompilerGLSL::Options options;
+                                   	options.version = 450;
+                                   	options.es = false; // TODO: Add to list of options in .json
+                                   	glsl.set_common_options(options);
+                                   	std::string source = glsl.compile();
+                                    std::cout << source << std::endl;
+                                    out_file << source;
+                                }
+                                else {
+                                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                                }
+                            }
+                        }
+                    } else if (compile["write_format"] == "hlsl"){
+                        for (const auto& stage: shader_stages){
+                            for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                                std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".hlsl");
+                                if (out_file) {
+                                    spirv_cross::CompilerHLSL hlsl(std::move(shader_info[stage].shadercode[i]));
+                                   	spirv_cross::ShaderResources resources = hlsl.get_shader_resources();
+
+                                   	for (auto& resource : resources.sampled_images){
+                                  		unsigned set = hlsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                                  		unsigned binding = hlsl.get_decoration(resource.id, spv::DecorationBinding);
+                                  		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
+                                   	}
+
+                                   	spirv_cross::CompilerHLSL::Options options;
+                                   	options.shader_model = 50; // TODO: Add to list of options in .json
+                                   	hlsl.set_hlsl_options(options);
+                                   	std::string source = hlsl.compile();
+                                    std::cout << source << std::endl;
+                                    out_file << source;
+                                }
+                                else {
+                                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                                }
+                            }
+                        }
+                    } else if (compile["write_format"] == "msl"){
+                        for (const auto& stage: shader_stages){
+                            for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                                std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".hlsl");
+                                if (out_file) {
+                                    spirv_cross::CompilerMSL msl(std::move(shader_info[stage].shadercode[i]));
+                                   	spirv_cross::ShaderResources resources = msl.get_shader_resources();
+
+                                   	for (auto& resource : resources.sampled_images){
+                                  		unsigned set = msl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                                  		unsigned binding = msl.get_decoration(resource.id, spv::DecorationBinding);
+                                  		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
+                                   	}
+
+                                   	spirv_cross::CompilerMSL::Options options;
+                                   	// options.msl_version = 50; // TODO: Add to list of options in .json
+                                   	msl.set_msl_options(options);
+                                   	std::string source = msl.compile();
+                                    std::cout << source << std::endl;
+                                    out_file << source;
+                                }
+                                else {
+                                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                                }
+                            }
+                        }
+                    }
                 }
-
-
-                glslang::FinalizeProcess();
             } else {
                 // SPIRV -> write_format
             }

@@ -1,4 +1,8 @@
 #pragma once
+//  TODO: Add options for:
+//      * File preextension definitions
+//      * SPIRV version and Vulkan target
+//      *
 
 inline const char * shader_compile_schema =
 R"({
