@@ -175,7 +175,7 @@ int main(int argc, char * argv[]) {
                         glslang::TShader shader(shader_info[stage].stage);
                         shader.setStrings(&file_code, 1);
                         shader.setEnvInput(read_source, shader_info[stage].stage, glslang::EShClientVulkan, 450);
-                        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2);
+                        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2); // TODO: Make versions a config setting
                         shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
 
                         TBuiltInResource resources = *GetDefaultResources();
@@ -207,7 +207,7 @@ int main(int argc, char * argv[]) {
                         for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
                             std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
                             if (out_file) {
-                                size_t size = shader_info[stage].shadercode.size();
+                                size_t size = shader_info[stage].shadercode[i].size();
                                 out_file.write(reinterpret_cast<const char*>(shader_info[stage].shadercode[i].data()), size * sizeof(int));
                                 out_file.close();
                             }
