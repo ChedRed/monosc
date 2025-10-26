@@ -66,4 +66,5 @@ HLSL -> DXBC, DXIL: dxc
 **Multistage**
 
 GLSL -> DXBC, DXIL: glslangValidator -> spirv-shadercross (HLSL) -> dxc
+
 GLSL/HLSL -> GLSL, HLSL, MSL: glslangValidator -> spirv-shadercross
