@@ -56,11 +56,14 @@ Below is the structure for your `shader_compile.json`:
 
 Here's what the shader files are processed through for each type:
 
+
 **Direct**
+
 GLSL, HLSL -> SPIRV: glslangValidator
 SPIRV -> GLSL, HLSL, MSL: spirv-shadercross
 HLSL -> DXBC, DXIL: dxc
 
 **Multistage**
+
 GLSL -> DXBC, DXIL: glslangValidator -> spirv-shadercross (HLSL) -> dxc
 GLSL/HLSL -> GLSL, HLSL, MSL: glslangValidator -> spirv-shadercross
