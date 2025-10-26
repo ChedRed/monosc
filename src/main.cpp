@@ -5,16 +5,11 @@
 
 #include <nlohmann/json.hpp>
 #include <nlohmann/json-schema.hpp>
-
-#include <SPIRV/GlslangToSpv.h>
-#include <glslang/Public/ShaderLang.h>
-#include <glslang/Public/ResourceLimits.h>
-#include <spirv_cross/spirv_glsl.hpp>
-#include <spirv_cross/spirv_hlsl.hpp>
-#include <spirv_cross/spirv_msl.hpp>
 #include <utility>
 
 #include "schema.h"
+#include "glslcomp.h"
+#include "spvcomp.h"
 
 // format, read_dir, write_dir, filepaths, filenames, shadercode, existent
 typedef struct {
@@ -23,7 +18,7 @@ typedef struct {
     std::string write_dir;
     std::vector<std::string> filepaths;
     std::vector<std::string> filenames;
-    std::vector<std::vector<uint32_t> > shadercode;
+    // std::vector<std::vector<uint32_t> > shadercode;
     EShLanguage stage;
     bool existent = false;
 } shadertype_info;
@@ -152,67 +147,51 @@ int main(int argc, char * argv[]) {
                 }
             }
 
-
-            // Compile stuff
-            if (compile["read_format"] != "spirv"){
-                glslang::InitializeProcess();
-                glslang::EShSource read_source;
-                if (compile["read_format"] == "glsl") read_source = glslang::EShSourceGlsl;
-
-                // Compile shaders to SPIRV
-                for (const auto& stage: shader_stages){
-                    if (!shader_info[stage].existent){
-                        std::cout << "Skipped " << stage << std::endl;
-                        continue;
-                    }
-                    for (int i = 0; i < shader_info[stage].filepaths.size(); i++){
-                        std::ifstream prefile(shader_info[stage].filepaths[i]);
-                        if (!prefile){
-                            std::cout << "WARN: The file below was skipped. Are you sure you have permission to read this file?\n" << shader_info[stage].filepaths[i];
-                            continue;
-                        }
-                        std::string file_string((std::istreambuf_iterator<char>(prefile)), std::istreambuf_iterator<char>());
-                        const char * file_code = file_string.c_str();
-
-                        glslang::TShader shader(shader_info[stage].stage);
-                        shader.setStrings(&file_code, 1);
-                        shader.setEnvInput(read_source, shader_info[stage].stage, glslang::EShClientVulkan, 450);
-                        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2); // TODO: Make versions a config setting
-                        shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
-
-                        TBuiltInResource resources = *GetDefaultResources();
-                        if (!shader.parse(&resources, 450, false, EShMsgDefault)) {
-                            exitmsg(1, std::string("Error: shader file ") + shader_info[stage].filepaths[i] + " is invalid!\n" + shader.getInfoLog());
-                        }
-                        glslang::TProgram program;
-                        program.addShader(&shader);
-
-                        if (!program.link(EShMsgDefault)) {
-                            exitmsg(1, std::string("Error: shader file ") + shader_info[stage].filepaths[i] + " is invalid!\n" + program.getInfoLog());
-                        }
-
-                        glslang::TIntermediate * intermediate = program.getIntermediate(shader_info[stage].stage);
-                        if (!intermediate) {
-                            exitmsg(1, std::string("Error: intermediate failed!\n") + shader_info[stage].filepaths[i] + "\n" + shader.getInfoLog());
-                        }
-
-                        std::vector<uint32_t> spirv;
-                        glslang::GlslangToSpv(*intermediate, spirv);
-                        std::cout << spirv.size() << std::endl;
-                        shader_info[stage].shadercode.push_back(spirv);
-                    }
+            // Compile stuff 2.0
+            for (const auto& stage: shader_stages){
+                if (!shader_info[stage].existent){
+                    std::cout << "Skipped " << stage << std::endl;
+                    continue;
                 }
+                for (int i = 0; i < shader_info[stage].filepaths.size(); i++){
+                    bool ms_bs = compile["write_format"] == "dxbc" || compile["write_format"] == "dxil";
+                    std::vector<uint32_t> spv_shadercode;
 
-                glslang::FinalizeProcess();
+                    if (compile["read_format"] == "spirv") {
+                        std::ifstream prefile(shader_info[stage].filepaths[i]);
+                        // Put prefile into spv_shadercode
+                    } else {
+                        if (compile["read_format"] == "hlsl" && ms_bs){
+                            // Start dxc
+                            // Compile direct DXBC/DXIL and END
+                        }
 
-                // Save SPIRV
-                if (compile["write_format"] == "spirv"){
-                    for (const auto& stage: shader_stages){
-                        for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                        glslangwrap glslwrap = glslangwrap();
+                        glslang::EShSource read_source = glslang::EShSourceHlsl;
+                        if (compile["read_format"] == "glsl") read_source = glslang::EShSourceGlsl;
+                        glslwrap.compileglsl(shader_info[stage].filepaths[i].c_str(), spv_shadercode, read_source, shader_info[stage].stage);
+                        glslwrap.destroy();
+                    }
+
+
+                    if (compile["write_format"] == "spirv"){
+                        std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
+                        if (out_file) {
+                            out_file.write(reinterpret_cast<const char*>(spv_shadercode.data()), spv_shadercode.size() * sizeof(int));
+                            out_file.close();
+                        }
+                        else {
+                            std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                        }
+                    } else {
+                        if  (ms_bs){
+                            // Compile HLSL -> DXBC/DXIL
+                        } else {
                             std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
                             if (out_file) {
-                                size_t size = shader_info[stage].shadercode[i].size();
-                                out_file.write(reinterpret_cast<const char*>(shader_info[stage].shadercode[i].data()), size * sizeof(int));
+                                std::cout << spv_shadercode.size() << std::endl;
+                                std::string returnv = compilespv(spv_shadercode, compile["write_format"]);
+                                out_file.write(returnv.c_str(), returnv.length() * sizeof(std::string));
                                 out_file.close();
                             }
                             else {
@@ -220,94 +199,212 @@ int main(int argc, char * argv[]) {
                             }
                         }
                     }
-                } else {
-                    // Compile existing SPIRV to other formats
-                    if (compile["write_format"] == "glsl"){ // TODO: simplify (nearly identical 3 things)
-                        for (const auto& stage: shader_stages){
-                            for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
-                                std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".glsl");
-                                if (out_file) {
-                                    spirv_cross::CompilerGLSL glsl(std::move(shader_info[stage].shadercode[i]));
-                                   	spirv_cross::ShaderResources resources = glsl.get_shader_resources();
-
-                                   	for (auto &resource : resources.sampled_images){
-                                  		unsigned set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-                                  		unsigned binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
-                                  		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
-                                   	}
-
-                                   	spirv_cross::CompilerGLSL::Options options;
-                                   	options.version = 450;
-                                   	options.es = false; // TODO: Add to list of options in .json
-                                   	glsl.set_common_options(options);
-                                   	std::string source = glsl.compile();
-                                    std::cout << source << std::endl;
-                                    out_file << source;
-                                }
-                                else {
-                                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
-                                }
-                            }
-                        }
-                    } else if (compile["write_format"] == "hlsl"){
-                        for (const auto& stage: shader_stages){
-                            for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
-                                std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".hlsl");
-                                if (out_file) {
-                                    spirv_cross::CompilerHLSL hlsl(std::move(shader_info[stage].shadercode[i]));
-                                   	spirv_cross::ShaderResources resources = hlsl.get_shader_resources();
-
-                                   	for (auto& resource : resources.sampled_images){
-                                  		unsigned set = hlsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-                                  		unsigned binding = hlsl.get_decoration(resource.id, spv::DecorationBinding);
-                                  		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
-                                   	}
-
-                                   	spirv_cross::CompilerHLSL::Options options;
-                                   	options.shader_model = 50; // TODO: Add to list of options in .json
-                                   	hlsl.set_hlsl_options(options);
-                                   	std::string source = hlsl.compile();
-                                    std::cout << source << std::endl;
-                                    out_file << source;
-                                }
-                                else {
-                                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
-                                }
-                            }
-                        }
-                    } else if (compile["write_format"] == "msl"){
-                        for (const auto& stage: shader_stages){
-                            for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
-                                std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".hlsl");
-                                if (out_file) {
-                                    spirv_cross::CompilerMSL msl(std::move(shader_info[stage].shadercode[i]));
-                                   	spirv_cross::ShaderResources resources = msl.get_shader_resources();
-
-                                   	for (auto& resource : resources.sampled_images){
-                                  		unsigned set = msl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-                                  		unsigned binding = msl.get_decoration(resource.id, spv::DecorationBinding);
-                                  		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
-                                   	}
-
-                                   	spirv_cross::CompilerMSL::Options options;
-                                   	// options.msl_version = 50; // TODO: Add to list of options in .json
-                                   	msl.set_msl_options(options);
-                                   	std::string source = msl.compile();
-                                    std::cout << source << std::endl;
-                                    out_file << source;
-                                }
-                                else {
-                                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
-                                }
-                            }
-                        }
-                    }
                 }
-            } else {
-                // SPIRV -> write_format
             }
-    }
+            // Compile stuff
+            // if (compile["read_format"] != "spirv"){
+            //     glslang::InitializeProcess();
+            //     glslang::EShSource read_source = glslang::EShSourceHLSL;
+            //     if (compile["read_format"] == "glsl") read_source = glslang::EShSourceGlsl;
 
+            //     // Compile shaders to SPIRV
+            //     for (const auto& stage: shader_stages){
+            //         if (!shader_info[stage].existent){
+            //             std::cout << "Skipped " << stage << std::endl;
+            //             continue;
+            //         }
+            //         for (int i = 0; i < shader_info[stage].filepaths.size(); i++){
+            //             std::ifstream prefile(shader_info[stage].filepaths[i]);
+            //             if (!prefile){
+            //                 std::cout << "WARN: The file below was skipped. Are you sure you have permission to read this file?\n" << shader_info[stage].filepaths[i];
+            //                 continue;
+            //             }
+            //             std::string file_string((std::istreambuf_iterator<char>(prefile)), std::istreambuf_iterator<char>());
+            //             const char * file_code = file_string.c_str();
+
+            //             glslang::TShader shader(shader_info[stage].stage);
+            //             shader.setStrings(&file_code, 1);
+            //             shader.setEnvInput(read_source, shader_info[stage].stage, glslang::EShClientVulkan, 450);
+            //             shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2); // TODO: Make versions a config setting
+            //             shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+
+            //             TBuiltInResource resources = *GetDefaultResources();
+            //             if (!shader.parse(&resources, 450, false, EShMsgDefault)) {
+            //                 exitmsg(1, std::string("Error: shader file ") + shader_info[stage].filepaths[i] + " is invalid!\n" + shader.getInfoLog());
+            //             }
+            //             glslang::TProgram program;
+            //             program.addShader(&shader);
+
+            //             if (!program.link(EShMsgDefault)) {
+            //                 exitmsg(1, std::string("Error: shader file ") + shader_info[stage].filepaths[i] + " is invalid!\n" + program.getInfoLog());
+            //             }
+
+            //             glslang::TIntermediate * intermediate = program.getIntermediate(shader_info[stage].stage);
+            //             if (!intermediate) {
+            //                 exitmsg(1, std::string("Error: intermediate failed!\n") + shader_info[stage].filepaths[i] + "\n" + shader.getInfoLog());
+            //             }
+
+            //             std::vector<uint32_t> spirv;
+            //             glslang::GlslangToSpv(*intermediate, spirv);
+            //             // spirv_cross::CompilerHLSL hlsl(spirv.data(), spirv.size());
+            //             std::cout << spirv.size() << std::endl;
+            //             // shader_info[stage].shadercode.reserve(spirv.size());
+            //             shader_info[stage].shadercode.push_back(spirv);
+            //         }
+            //     }
+
+            //     glslang::FinalizeProcess();
+
+                // Save SPIRV
+                // if (compile["write_format"] == "spirv"){
+                //     for (const auto& stage: shader_stages){
+                //         for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                //             std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
+                //             if (out_file) {
+                //                 size_t size = shader_info[stage].shadercode[i].size();
+                //                 out_file.write(reinterpret_cast<const char*>(shader_info[stage].shadercode[i].data()), size * sizeof(int));
+                //                 out_file.close();
+                //             }
+                //             else {
+                //                 std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                //             }
+                //         }
+                //     }
+                // } else {
+                //     // Compile existing SPIRV to other formats
+                //     if (compile["write_format"] == "glsl"){ // TODO: simplify (nearly identical 3 things)
+                //         for (const auto& stage: shader_stages){
+                //             for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                //                 std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".glsl");
+                //                 if (out_file) {
+                //                     spirv_cross::CompilerGLSL glsl(shader_info[stage].shadercode[i].data(), shader_info[stage].shadercode[i].size());
+                //                    	spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+
+                //                    	for (auto &resource : resources.sampled_images){
+                //                   		unsigned set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                //                   		unsigned binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+                //                   		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
+                //                    	}
+
+                //                    	spirv_cross::CompilerGLSL::Options options;
+                //                    	options.version = 450;
+                //                    	options.es = false; // TODO: Add to list of options in .json
+                //                    	glsl.set_common_options(options);
+                //                    	std::string source = glsl.compile();
+                //                     std::cout << source << std::endl;
+                //                     out_file << source;
+                //                 }
+                //                 else {
+                //                     std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                //                 }
+                //             }
+                //         }
+                //     } else if (compile["write_format"] == "hlsl"){
+                //         for (const auto& stage: shader_stages){
+                //             for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                //                 std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".hlsl");
+                //                 if (out_file) {
+                //                     std::cout << shader_info[stage].shadercode[i].data() << std::endl;
+                //                     std::vector<uint32_t> spirv = shader_info[stage].shadercode[i];
+                //                     spirv_cross::CompilerHLSL hlsl(spirv.data(), spirv.size());
+                //                     std::cout << "pass" << std::endl;
+                //                    	spirv_cross::ShaderResources resources = hlsl.get_shader_resources();
+
+                //                    	for (auto& resource : resources.sampled_images){
+                //                   		unsigned set = hlsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                //                   		unsigned binding = hlsl.get_decoration(resource.id, spv::DecorationBinding);
+                //                   		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
+                //                    	}
+
+                //                    	spirv_cross::CompilerHLSL::Options options;
+                //                    	options.shader_model = 50; // TODO: Add to list of options in .json
+                //                    	hlsl.set_hlsl_options(options);
+                //                    	std::string source = hlsl.compile();
+                //                     std::cout << source << std::endl;
+                //                     out_file << source;
+                //                     // const SpvId * spirv = shader_info[stage].shadercode[i].data();
+                //                     // size_t word_count = shader_info[stage].shadercode[i].size();
+
+                //                     // spvc_context context = NULL;
+                //                     // spvc_parsed_ir ir = NULL;
+                //                     // spvc_compiler compiler_hlsl = NULL;
+                //                     // spvc_compiler_options options = NULL;
+                //                     // spvc_resources resources = NULL;
+                //                     // const spvc_reflected_resource *list = NULL;
+                //                     // const char *result = NULL;
+                //                     // size_t count;
+                //                     // size_t i;
+                //                     // spvc_context_create(&context);
+
+                //                     // // Set debug callback.
+                //                     // // spvc_context_set_error_callback(context, error_callback, userdata);
+
+                //                     // // Parse the SPIR-V.
+                //                     // spvc_context_parse_spirv(context, spirv, word_count, &ir);
+
+                //                     // // Hand it off to a compiler instance and give it ownership of the IR.
+                //                     // spvc_context_create_compiler(context, SPVC_BACKEND_HLSL, ir, SPVC_CAPTURE_MODE_TAKE_OWNERSHIP, &compiler_hlsl);
+
+                //                     // // Do some basic reflection.
+                //                     // spvc_compiler_create_shader_resources(compiler_hlsl, &resources);
+                //                     // spvc_resources_get_resource_list_for_type(resources, SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, &list, &count);
+
+                //                     // for (i = 0; i < count; i++)
+                //                     // {
+                //                     //     printf("ID: %u, BaseTypeID: %u, TypeID: %u, Name: %s\n", list[i].id, list[i].base_type_id, list[i].type_id,
+                //                     //            list[i].name);
+                //                     //     printf("  Set: %u, Binding: %u\n",
+                //                     //            spvc_compiler_get_decoration(compiler_hlsl, list[i].id, SpvDecorationDescriptorSet),
+                //                     //            spvc_compiler_get_decoration(compiler_hlsl, list[i].id, SpvDecorationBinding));
+                //                     // }
+
+                //                     // // Modify options.
+                //                     // spvc_compiler_create_compiler_options(compiler_hlsl, &options);
+                //                     // // spvc_compiler_options_set_uint(options, SPVC_COMPILER_OPTION_HLSL_, 330);
+                //                     // spvc_compiler_install_compiler_options(compiler_hlsl, options);
+
+                //                     // spvc_compiler_compile(compiler_hlsl, &result);
+                //                     // printf("Cross-compiled source: %s\n", result);
+
+                //                     // // Frees all memory we allocated so far.
+                //                     // spvc_context_destroy(context);
+                //                 }
+                //                 else {
+                //                     std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                //                 }
+                //             }
+                //         }
+                //     } else if (compile["write_format"] == "msl"){
+                //         for (const auto& stage: shader_stages){
+                //             for (int i = 0; i < shader_info[stage].shadercode.size(); i++){
+                //                 std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".hlsl");
+                //                 if (out_file) {
+                //                     spirv_cross::CompilerMSL msl(shader_info[stage].shadercode[i].data(), shader_info[stage].shadercode[i].size());
+                //                    	spirv_cross::ShaderResources resources = msl.get_shader_resources();
+
+                //                    	for (auto& resource : resources.sampled_images){
+                //                   		unsigned set = msl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                //                   		unsigned binding = msl.get_decoration(resource.id, spv::DecorationBinding);
+                //                   		std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
+                //                    	}
+
+                //                    	spirv_cross::CompilerMSL::Options options;
+                //                    	// options.msl_version = 50; // TODO: Add to list of options in .json
+                //                    	msl.set_msl_options(options);
+                //                    	std::string source = msl.compile();
+                //                     std::cout << source << std::endl;
+                //                     out_file << source;
+                //                 }
+                //                 else {
+                //                     std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                //                 }
+                //             }
+                //         }
+                //     }
+                }
+            // } else {
+            //     // SPIRV -> write_format
+            // }
     return 0;
 }
 

@@ -1,0 +1,10 @@
+{
+  "lazy": true,
+  "read_format": "hlsl",
+  "write_format": "spirv",
+  "shaders": {
+    "read_folder": "./shaders/read",
+    "files": ["shader.frag.hlsl", "example.vert.hlsl", "this.comp.hlsl"],
+    "write_folder": "./shaders/write"
+  }
+}

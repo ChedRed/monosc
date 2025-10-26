@@ -1,0 +1,10 @@
+{
+  "lazy": true,
+  "read_format": "msl",
+  "write_format": "glsl",
+  "shaders": {
+    "read_folder": "./shaders/read",
+    "files": ["shader.frag.msl", "example.vert.msl", "this.comp.msl"],
+    "write_folder": "./shaders/write"
+  }
+}

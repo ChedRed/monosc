@@ -1,0 +1,21 @@
+{
+  "lazy": false,
+  "read_format": "spirv",
+  "write_format": "msl",
+  "shaders": {
+    "frag": {
+      "read_folder": "./read/frag",
+      "write_folder": "./write/frag"
+    },
+    "vert": {
+      "read_folder": "./read/vert",
+      "files": ["example.vert.spv"],
+      "write_folder": "./write/vert"
+    },
+    "comp": {
+      "read_folder": "./read/comp",
+      "files": ["this.comp.spv", "that.comp.spv"],
+      "write_folder": "./write/comp"
+    }
+  }
+}
