@@ -3,6 +3,7 @@
 #include <SPIRV/GlslangToSpv.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/Public/ResourceLimits.h>
+#include <cstdint>
 #include <fstream>
 #include <vector>
 

@@ -34,6 +34,7 @@ add_executable(monosc
 )
 
 target_include_directories(monosc PRIVATE /usr/local/include)
+target_include_directories(monosc PRIVATE external/SPIRV-Cross external/glslang)
 target_sources(monosc PRIVATE external/glslang/glslang/ResourceLimits/ResourceLimits.cpp)
 
 # Linking dependencies
@@ -49,4 +50,4 @@ target_link_libraries(monosc PRIVATE
     nlohmann_json_schema_validator::validator
 )
 
-set_target_properties(monosc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/monosc")
+set_target_properties(monosc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/monosc")

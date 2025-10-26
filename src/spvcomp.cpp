@@ -3,12 +3,12 @@
 
 std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string lang){
     if (lang == "glsl"){
-        spirv_cross::CompilerGLSL glsl(std::move(spv_shadercode));
+        spirv_cross::CompilerGLSL glsl(spv_shadercode.data(), spv_shadercode.size());
        	spirv_cross::ShaderResources resources = glsl.get_shader_resources();
 
        	for (auto &resource : resources.sampled_images){
-      		unsigned set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-      		unsigned binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+      		glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+      		glsl.get_decoration(resource.id, spv::DecorationBinding);
       		// std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
        	}
 
@@ -21,15 +21,12 @@ std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string
     }
 
     if (lang == "hlsl"){
-        std::cout << "thisthat" << std::endl;
-        std::cout << spv_shadercode.data() << std::endl;
-        spirv_cross::CompilerHLSL hlsl(std::move(spv_shadercode));
-        std::cout << "then" << std::endl;
+        spirv_cross::CompilerHLSL hlsl(spv_shadercode.data(), spv_shadercode.size());
        	spirv_cross::ShaderResources resources = hlsl.get_shader_resources();
 
        	for (auto &resource : resources.sampled_images){
-      		unsigned set = hlsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-      		unsigned binding = hlsl.get_decoration(resource.id, spv::DecorationBinding);
+      		hlsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+      		hlsl.get_decoration(resource.id, spv::DecorationBinding);
       		// std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
        	}
 
@@ -45,8 +42,8 @@ std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string
        	spirv_cross::ShaderResources resources = msl.get_shader_resources();
 
        	for (auto &resource : resources.sampled_images){
-      		unsigned set = msl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-      		unsigned binding = msl.get_decoration(resource.id, spv::DecorationBinding);
+      		msl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+      		msl.get_decoration(resource.id, spv::DecorationBinding);
       		// std::cout << "Image" << resource.name << "at set = " << set << ", binding = " << binding << std::endl;
        	}
 

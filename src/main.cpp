@@ -18,7 +18,6 @@ typedef struct {
     std::string write_dir;
     std::vector<std::string> filepaths;
     std::vector<std::string> filenames;
-    // std::vector<std::vector<uint32_t> > shadercode;
     EShLanguage stage;
     bool existent = false;
 } shadertype_info;
@@ -86,7 +85,7 @@ int main(int argc, char * argv[]) {
                     shader_info[stage].write_dir = compile["shaders"]["write_folder"];
                 }
                 if (compile["shaders"].contains("files")) {
-                    for (int i = 0; i < compile["shaders"]["files"].size(); i++){
+                    for (int i = 0; i < (int)compile["shaders"]["files"].size(); i++){
                         std::string filepath = std::string(compile["shaders"]["read_folder"]) + "/" + std::string(compile["shaders"]["files"][i]);
                         std::cout << filepath << std::endl;
                         if (!std::filesystem::exists(filepath)) exitmsg(1, std::string("Error: the file ") + std::string(compile["shaders"]["files"][i]) + " cannot be found!");
@@ -126,7 +125,7 @@ int main(int argc, char * argv[]) {
                                 std::cout << "Warning: 'files' is defined in '" << stage << "', but it is empty!";
                                 shader_info[stage].existent = false;
                             }
-                            for (int i = 0; i < compile["shaders"][stage]["files"].size(); i++){
+                            for (int i = 0; i < (int)compile["shaders"][stage]["files"].size(); i++){
                                 if (std::filesystem::exists(std::string(compile["shaders"][stage]["read_folder"]) + "/" + std::string(compile["shaders"][stage]["files"][i]))){
                                     shader_info[stage].filepaths.push_back(std::string(compile["shaders"][stage]["read_folder"]) + "/" + std::string(compile["shaders"][stage]["files"][i]));
                                     shader_info[stage].filenames.push_back(std::string(compile["shaders"][stage]["files"][i]));
@@ -153,7 +152,7 @@ int main(int argc, char * argv[]) {
                     std::cout << "Skipped " << stage << std::endl;
                     continue;
                 }
-                for (int i = 0; i < shader_info[stage].filepaths.size(); i++){
+                for (int i = 0; i < (int)shader_info[stage].filepaths.size(); i++){
                     bool ms_bs = compile["write_format"] == "dxbc" || compile["write_format"] == "dxil";
                     std::vector<uint32_t> spv_shadercode;
 
@@ -177,7 +176,7 @@ int main(int argc, char * argv[]) {
                     if (compile["write_format"] == "spirv"){
                         std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
                         if (out_file) {
-                            out_file.write(reinterpret_cast<const char*>(spv_shadercode.data()), spv_shadercode.size() * sizeof(int));
+                            out_file.write(reinterpret_cast<const char*>(spv_shadercode.data()), spv_shadercode.size() * sizeof(uint32_t));
                             out_file.close();
                         }
                         else {
@@ -187,11 +186,10 @@ int main(int argc, char * argv[]) {
                         if  (ms_bs){
                             // Compile HLSL -> DXBC/DXIL
                         } else {
-                            std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv");
+                            std::ofstream out_file(shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + "." + std::string(compile["write_format"]));
                             if (out_file) {
-                                std::cout << spv_shadercode.size() << std::endl;
                                 std::string returnv = compilespv(spv_shadercode, compile["write_format"]);
-                                out_file.write(returnv.c_str(), returnv.length() * sizeof(std::string));
+                                out_file.write(returnv.c_str(), returnv.length());
                                 out_file.close();
                             }
                             else {
