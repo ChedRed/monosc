@@ -5,7 +5,6 @@
 
 #include <nlohmann/json.hpp>
 #include <nlohmann/json-schema.hpp>
-#include <utility>
 
 #include "schema.h"
 #include "glslcomp.h"
@@ -19,7 +18,7 @@ typedef struct {
     std::vector<std::string> filepaths;
     std::vector<std::string> filenames;
     EShLanguage stage;
-    bool existent = false;
+    bool existent;
 } shadertype_info;
 
 const std::string shader_stages[] = {"frag", "vert", "comp"};
@@ -37,8 +36,11 @@ std::string shader_stage(std::string filename, std::string read_format);
 int main(int argc, char * argv[]) {
 
     shader_info["frag"].stage = EShLangFragment;
+    shader_info["frag"].existent = false;
     shader_info["vert"].stage = EShLangVertex;
+    shader_info["vert"].existent = false;
     shader_info["comp"].stage = EShLangCompute;
+    shader_info["comp"].existent = false;
 
     switch (argc) {
         case 1:
