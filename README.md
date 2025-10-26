@@ -1,4 +1,4 @@
-monosc is a simple bash program made to simplify glslangValidator and SPIRV-Shadercross with a cmake-like command and file relationship. It supports GLSL, HLSL, and SPIRV as input, SPIRV, MSL, DXBC, and DXIL as output, and can compile vertex, fragment, and compute shaders.
+monosc is a simple c++ program made to simplify glslangValidator and, SPIRV-Shadercross with a cmake-like command and file relationship. It supports GLSL, HLSL, and SPIRV as input, SPIRV, MSL, DXBC, and DXIL as output, and can compile vertex, fragment, and compute shaders.
 
 Notes:
 * .hlsl files must be suffixed with .frag, .vert, .comp, etc. (.frag.hlsl ...)
