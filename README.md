@@ -60,7 +60,9 @@ Here's what the shader files are processed through for each type:
 **Direct**
 
 GLSL, HLSL -> SPIRV: glslangValidator
+
 SPIRV -> GLSL, HLSL, MSL: spirv-shadercross
+
 HLSL -> DXBC, DXIL: dxc
 
 **Multistage**
