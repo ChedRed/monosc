@@ -6,9 +6,9 @@
 #include <nlohmann/json.hpp>
 #include <nlohmann/json-schema.hpp>
 
-#include "schema.h"
-#include "glslcomp.h"
-#include "spvcomp.h"
+#include "schema.hpp"
+#include "glslcomp.hpp"
+#include "spvcomp.hpp"
 
 // format, read_dir, write_dir, filepaths, filenames, shadercode, existent
 typedef struct {

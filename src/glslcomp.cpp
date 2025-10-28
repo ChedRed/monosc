@@ -1,4 +1,4 @@
-#include "glslcomp.h"
+#include "glslcomp.hpp"
 #include <iostream>
 
 glslangwrap::glslangwrap(){

@@ -1,4 +1,4 @@
-#include "spvcomp.h"
+#include "spvcomp.hpp"
 #include <iostream>
 
 std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string lang){
