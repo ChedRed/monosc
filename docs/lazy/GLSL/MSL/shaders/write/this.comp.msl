@@ -1,0 +1,28 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct Output
+{
+    float result[1];
+};
+
+struct InputA
+{
+    float dataA[1];
+};
+
+struct InputB
+{
+    float dataB[1];
+};
+
+constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(256u, 1u, 1u);
+
+kernel void main0(device Output& _20 [[buffer(0)]], device InputA& _27 [[buffer(1)]], device InputB& _35 [[buffer(2)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    uint idx = gl_GlobalInvocationID.x;
+    _20.result[idx] = _27.dataA[idx] + _35.dataB[idx];
+}
+

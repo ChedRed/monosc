@@ -27,6 +27,13 @@ add_subdirectory(external/json-schema-validator)
 add_subdirectory(external/glslang)
 add_subdirectory(external/SPIRV-Cross)
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    find_library(FOUNDATION Foundation REQUIRED)
+    find_library(QUARTZCORE QuartzCore REQUIRED)
+    find_library(METAL Metal REQUIRED)
+    find_library(OBJC objc REQUIRED)
+endif()
+
 add_executable(monosc
     src/main.cpp
     src/glslcomp.cpp
@@ -49,5 +56,21 @@ target_link_libraries(monosc PRIVATE
     nlohmann_json::nlohmann_json
     nlohmann_json_schema_validator::validator
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    find_library(METAL_FRAMEWORK Metal)
+    find_library(FOUNDATION_FRAMEWORK Foundation)
+    find_library(QUARTZCORE_FRAMEWORK QuartzCore)
+
+    target_link_libraries(monosc PRIVATE
+    ${METAL_FRAMEWORK}
+    ${FOUNDATION_FRAMEWORK}
+    ${QUARTZCORE_FRAMEWORK}
+    ${METAL}
+    ${FOUNDATION}
+    ${QUARTZCORE}
+    ${OBJC}
+    )
+endif()
 
 set_target_properties(monosc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build/monosc")

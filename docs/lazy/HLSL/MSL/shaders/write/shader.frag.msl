@@ -1,0 +1,17 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct camera
+{
+    float4 _38_viewport;
+};
+
+fragment void _4()
+{
+    float2 pos;
+    float4 color;
+    float2 uv;
+}
+

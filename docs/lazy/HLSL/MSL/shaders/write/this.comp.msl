@@ -1,0 +1,20 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct _RESERVED_IDENTIFIER_FIXUP_20
+{
+    uint _data[1];
+};
+
+struct _RESERVED_IDENTIFIER_FIXUP_27
+{
+    uint _data[1];
+};
+
+kernel void _4()
+{
+    uint3 _RESERVED_IDENTIFIER_FIXUP_gl_GlobalInvocationID;
+}
+

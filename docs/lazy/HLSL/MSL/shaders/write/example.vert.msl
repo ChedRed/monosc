@@ -1,0 +1,19 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct camera
+{
+    float3 _16_viewport;
+};
+
+vertex void _4()
+{
+    float4 _RESERVED_IDENTIFIER_FIXUP_gl_Position;
+    float2 posin;
+    float2 uvout;
+    float2 uvin;
+    float2 posout;
+}
+
