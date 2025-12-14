@@ -65,8 +65,12 @@ SPIRV -> GLSL, HLSL, MSL: spirv-shadercross
 
 HLSL -> DXBC, DXIL: dxc
 
+HLSL -> METALLIB: metal cli
+
 **Multistage**
 
 GLSL -> DXBC, DXIL: glslangValidator -> spirv-shadercross (HLSL) -> dxc
 
 GLSL/HLSL -> GLSL, HLSL, MSL: glslangValidator -> spirv-shadercross
+
+SPIRV -> METALLIB: spirv-shadercross (MSL) -> metal cli

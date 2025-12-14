@@ -1,4 +1,5 @@
 #include <string>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
@@ -16,12 +17,14 @@ typedef struct {
     std::string write_dir;
     std::vector<std::string> filepaths;
     std::vector<std::string> filenames;
+    std::vector<std::string> entrypoints;
     EShLanguage stage;
     bool existent;
 } shadertype_info;
 
 const std::string shader_stages[] = {"frag", "vert", "comp"};
 
+std::vector<std::string> temp_files;
 std::map<std::string, shadertype_info> shader_info;
 
 extern const char * helpMessage;
@@ -93,6 +96,12 @@ int main(int argc, char * argv[]) {
                     shader_info[shader_stage(filepath, compile["read_format"])].existent = true;
                     shader_info[shader_stage(filepath, compile["read_format"])].filepaths.push_back(filepath);
                     shader_info[shader_stage(filepath, compile["read_format"])].filenames.push_back(compile["shaders"]["files"][i]);
+                    if (compile["shaders"].contains("entrypoints")){
+                        if (compile["shaders"]["entrypoints"].size() == compile["shaders"]["files"].size()){
+                            shader_info[shader_stage(filepath, compile["read_format"])].entrypoints.push_back(compile["shaders"]["entrypoints"][i]);
+                            std::cout << shader_stage(filepath, compile["read_format"]) << "\n" << compile["shaders"]["entrypoints"][i] << std::endl;
+                        }
+                    }
                     std::cout << compile["shaders"]["files"][i] << std::endl;
                 }
                 else exitmsg(1, std::string("Error: the file ") + std::string(compile["shaders"]["files"][i]) + " does not exist!");
@@ -129,6 +138,11 @@ int main(int argc, char * argv[]) {
                         if (std::filesystem::exists(std::string(compile["shaders"][stage]["read_folder"]) + "/" + std::string(compile["shaders"][stage]["files"][i]))){
                             shader_info[stage].filepaths.push_back(std::string(compile["shaders"][stage]["read_folder"]) + "/" + std::string(compile["shaders"][stage]["files"][i]));
                             shader_info[stage].filenames.push_back(std::string(compile["shaders"][stage]["files"][i]));
+                            if (compile["shaders"].contains("entrypoints")){
+                                if (compile["shaders"]["entrypoints"].size() == compile["shaders"]["files"].size()){
+                                    shader_info[stage].entrypoints.push_back(compile["shaders"]["entrypoints"][i]);
+                                }
+                            }
                         }
                         else exitmsg(1, std::string("Error: for") +  stage + ", the file " + std::string(compile["shaders"][stage]["files"][i]) + " cannot be found!");
                     }
@@ -180,7 +194,7 @@ int main(int argc, char * argv[]) {
                     out_file.close();
                 }
                 else {
-                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv";
+                    std::cout << "WARN: A file at the directory below cannot be created. Are you sure you have permission to write to this directory?\n" << shader_info[stage].write_dir << "\n" << shader_info[stage].write_dir + "/" + shader_info[stage].filenames[i] + ".spv\n";
                 }
             } else {
                 if  (ms_bs){
@@ -196,9 +210,23 @@ int main(int argc, char * argv[]) {
 
                     std::string extension = "";
                     if (compile["write_format"] != "glsl") extension = "." + std::string(compile["write_format"]);
-                    std::ofstream out_file(shader_info[stage].write_dir + "/" + unextension + extension);
+                    std::ofstream out_file;
+                    if (compile["write_format"] == "metallib"){
+                        out_file.open((std::string)std::filesystem::temp_directory_path() + unextension + ".metal");
+                        temp_files.push_back((std::string)std::filesystem::temp_directory_path() + unextension + ".metal");
+                    } else{
+                        out_file.open(shader_info[stage].write_dir + "/" + unextension + extension);
+                    }
+
+
                     if (out_file) {
-                        std::string returnv = compilespv(spv_shadercode, compile["write_format"]);
+                        std::string returnv;
+                        if (compile["write_format"] == "metallib"){
+                            std::cout << shader_info[stage].entrypoints[i] << std::endl;
+                            returnv = compilespv(spv_shadercode, compile["write_format"], shader_info[stage].entrypoints[i], stage);
+                        } else {
+                            returnv = compilespv(spv_shadercode, compile["write_format"]);
+                        }
                         out_file.write(returnv.c_str(), returnv.length());
                         out_file.close();
                     }
@@ -208,6 +236,17 @@ int main(int argc, char * argv[]) {
                 }
             }
         }
+    }
+    if (compile["write_format"] == "metallib"){
+        // Compile all created .metal files in the temp dir into one .metallib
+        std::string rawfiles = "xcrun -sdk macosx metal ";
+        for (auto& entry : temp_files) {
+            rawfiles.append(entry + " ");
+        }
+        rawfiles.append("-o " + shader_info[shader_stages[0]].write_dir + "/default.metallib");
+        system(rawfiles.c_str());
+        std::cout << rawfiles << std::endl;
+
     }
     return 0;
 }

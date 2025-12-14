@@ -1,7 +1,8 @@
 #include "spvcomp.hpp"
+#include "SPIRV/spirv.hpp11"
 #include <iostream>
 
-std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string lang){
+std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string lang, std::string entrypoint, std::string model){
     if (lang == "glsl"){
         spirv_cross::CompilerGLSL glsl(spv_shadercode.data(), spv_shadercode.size());
        	spirv_cross::ShaderResources resources = glsl.get_shader_resources();
@@ -37,7 +38,7 @@ std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string
         return source;
     }
 
-    if (lang == "msl"){
+    if (lang == "metal" || lang == "metallib"){
         spirv_cross::CompilerMSL msl(spv_shadercode.data(), spv_shadercode.size());
        	spirv_cross::ShaderResources resources = msl.get_shader_resources();
 
@@ -50,6 +51,19 @@ std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string
        	spirv_cross::CompilerMSL::Options options;
         // options.set_msl_version(1); // TODO: Set MSL version, also add to thingy
        	msl.set_msl_options(options);
+        if (!entrypoint.empty()){
+            std::cout << model << std::endl;
+            spv::ExecutionModel spvmodel;
+            if (model == "frag") spvmodel = spv::ExecutionModelFragment;
+            else if (model == "vert") spvmodel = spv::ExecutionModelVertex;
+            else if (model == "comp") spvmodel = spv::ExecutionModelGLCompute;
+            else {
+                std::cout << "Error: no bueno\n";
+                exit(1);
+            }
+            msl.rename_entry_point("main", entrypoint, spvmodel);
+
+        }
        	std::string source = msl.compile();
         return source;
     }

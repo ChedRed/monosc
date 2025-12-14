@@ -1,10 +1,11 @@
 {
   "lazy": true,
   "read_format": "glsl",
-  "write_format": "msl",
+  "write_format": "metallib",
   "shaders": {
     "read_folder": "./shaders/read",
     "files": ["shader.frag", "example.vert", "this.comp"],
+    "entrypoints": ["main0_frag", "main0_vert", "main0_comp"],
     "write_folder": "./shaders/write"
   }
 }

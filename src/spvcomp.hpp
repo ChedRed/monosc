@@ -6,4 +6,4 @@
 #include <spirv_msl.hpp>
 #include <cstdint>
 
-std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string lang);
+std::string compilespv(const std::vector<uint32_t> & spv_shadercode, std::string lang, std::string entrypoint = "", std::string model = "");
