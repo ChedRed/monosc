@@ -48,12 +48,42 @@ int main(int argc, char * argv[]) {
         std::cout << helpMessage;
         return 0;
     }
-    // Set CWD
-    if (!std::filesystem::is_directory(argv[1])) exitmsg(1, "Error: the directory you provided is invalid!");
-    std::filesystem::current_path(argv[1]);
+
+    // Set CWD/filename
+    std::filesystem::path target_cwd = std::filesystem::path(argv[1]);
+    std::filesystem::path target_file = "shader_compile.json";
+
+    if (!std::filesystem::exists(target_cwd)){
+        exitmsg(1, "Error: the path you provided is invalid!");
+    }
+    if (std::filesystem::is_regular_file(target_cwd)) {
+        if (!(target_cwd.extension() == ".json")) exitmsg(1, "Error: the file extension is improper! Make sure you are passing a JSON file.");
+
+        if (target_cwd.has_parent_path()){
+            target_cwd = std::filesystem::absolute(target_cwd.parent_path());
+            std::filesystem::current_path(target_cwd);
+            std::cout << "Target directory: " << target_cwd << std::endl;
+        }
+        else {
+            std::cout << "Warning: CWD returned empty, ignoring." << std::endl;
+        }
+
+        target_file = target_cwd.filename();
+        std::cout << "Target file: " << target_file << std::endl;
+    }
+    else if (std::filesystem::is_directory(target_cwd)) {
+        std::filesystem::current_path(target_cwd);
+        std::cout << "Target directory: " << target_cwd << std::endl;
+        std::cout << "Target file: " << target_file << std::endl;
+    }
+    else {
+        exitmsg(1, "Error: the path you provided is invalid, and does not register as a file or a directory!");
+    }
+
+
 
     // Verify json file existence
-    if (!std::filesystem::is_regular_file("shader_compile.json")) exitmsg(1, "Error: shader_compile.json could not be found at the path specified");
+    if (!std::filesystem::is_regular_file(target_file)) exitmsg(1, "Error: shader_compile.json could not be found at the path specified");
 
     // initialize shader_compile.json schema
     nlohmann::json schema = nlohmann::json::parse(shader_compile_schema);
@@ -64,7 +94,7 @@ int main(int argc, char * argv[]) {
 
     // Check if shader_compile.json is valid json
     try {
-        compile = nlohmann::json::parse(std::ifstream("shader_compile.json"));
+        compile = nlohmann::json::parse(std::ifstream(target_file));
     } catch (const std::exception &e) {
         exitmsg(1, std::string("Error: shader_compile.json is invalid.\n") + e.what());
     }
@@ -177,6 +207,7 @@ int main(int argc, char * argv[]) {
                 if (compile["read_format"] == "hlsl" && ms_bs){
                     // Start dxc
                     // Compile direct DXBC/DXIL and END
+                    exitmsg(1, "dxc is not supported yet!"); // TODO
                 }
 
                 glslangwrap glslwrap = glslangwrap();
@@ -199,7 +230,7 @@ int main(int argc, char * argv[]) {
             } else {
                 if  (ms_bs){
                     // Compile HLSL -> DXBC/DXIL
-                    exitmsg(1, "dxc is not supported yet!");
+                    exitmsg(1, "dxc is not supported yet!"); // TODO
                 } else {
                     std::string unextension = shader_info[stage].filenames[i];
                     if (compile["read_format"] != "glsl") {
@@ -237,7 +268,7 @@ int main(int argc, char * argv[]) {
             }
         }
     }
-    if (compile["write_format"] == "metallib"){
+    if (compile["write_format"] == "metallib"){ // TODO: make it only run on macos and error on others
         // Compile all created .metal files in the temp dir into one .metallib
         std::string rawfiles = "xcrun -sdk macosx metal ";
         for (auto& entry : temp_files) {
@@ -246,17 +277,17 @@ int main(int argc, char * argv[]) {
         rawfiles.append("-o " + shader_info[shader_stages[0]].write_dir + "/default.metallib");
         system(rawfiles.c_str());
         std::cout << rawfiles << std::endl;
-
     }
     return 0;
 }
 
 const char * helpMessage =
-R"(monosc <directory>
+R"(monosc <path>
 
 parameters:
-  <directory>         : The directory that houses your
-                        shader_compile.json
+  <path>            : The path that houses your
+                        shader_compile.json, or
+                        a path to a .json file.
 )";
 
 void exitmsg(int code, const char * message){
